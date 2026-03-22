@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Gold &amp; Silver Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4" integrity="sha384-jb8JQMbMoBUzgWatfe6COACi2ljcDdZQ2OxczGA3bGNeWe+6DChMTBJemed7ZnvJ" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3" integrity="sha384-cVMg8E3QFwTvGCDuK+ET4PD341jF3W8nO1auiXfuZNQkzbUUiBGLsIQUE+b1mxws" crossorigin="anonymous"></script>
+</head>
+<body>
+  <!-- Animated gradient blobs -->
+  <div class="backdrop-blur">
+    <div class="blob blob-gold"></div>
+    <div class="blob blob-silver"></div>
+    <div class="blob blob-accent"></div>
+  </div>
+
+  <!-- Header -->
+  <header class="glass-header">
+    <div class="header-content">
+      <div class="brand">
+        <svg class="brand-icon" viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+          <path d="M2 17l10 5 10-5"/>
+          <path d="M2 12l10 5 10-5"/>
+        </svg>
+        <h1>Gold &amp; Silver Dashboard</h1>
+      </div>
+      <div class="header-actions">
+        <button id="refresh-btn" class="btn-icon" title="Refresh data">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="23 4 23 10 17 10"></polyline>
+            <polyline points="1 20 1 14 7 14"></polyline>
+            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+          </svg>
+        </button>
+        <button id="theme-toggle" class="btn-icon" title="Toggle theme">
+          <svg class="icon-sun" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="5"></circle>
+            <line x1="12" y1="1" x2="12" y2="3"></line>
+            <line x1="12" y1="21" x2="12" y2="23"></line>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+            <line x1="1" y1="12" x2="3" y2="12"></line>
+            <line x1="21" y1="12" x2="23" y2="12"></line>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+          </svg>
+          <svg class="icon-moon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- Price Cards -->
+    <section class="price-cards">
+      <div class="glass-card price-card gold-card">
+        <div class="card-icon">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+          </svg>
+        </div>
+        <span class="card-label">Gold 22K</span>
+        <span class="card-price" id="gold22k">--</span>
+        <span class="card-unit">per gram</span>
+        <div class="card-shimmer"></div>
+      </div>
+      <div class="glass-card price-card gold24-card">
+        <div class="card-icon">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+          </svg>
+        </div>
+        <span class="card-label">Gold 24K</span>
+        <span class="card-price" id="gold24k">--</span>
+        <span class="card-unit">per gram</span>
+        <div class="card-shimmer"></div>
+      </div>
+      <div class="glass-card price-card silver-card">
+        <div class="card-icon">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M8 12h8M12 8v8"/>
+          </svg>
+        </div>
+        <span class="card-label">Silver</span>
+        <span class="card-price" id="silver">--</span>
+        <span class="card-unit">per gram</span>
+        <div class="card-shimmer"></div>
+      </div>
+    </section>
+
+    <p class="last-updated" id="lastUpdated">Last updated: --</p>
+
+    <!-- Filters -->
+    <section class="glass-card filter-section">
+      <div class="filter-row">
+        <div class="btn-group" role="group" aria-label="Date range">
+          <button class="btn active" data-range="week">Week</button>
+          <button class="btn" data-range="month">Month</button>
+          <button class="btn" data-range="custom">Custom</button>
+        </div>
+        <div class="custom-range" id="customRange">
+          <input type="date" id="startDate" class="input-glass" aria-label="Start date" />
+          <span class="range-sep">to</span>
+          <input type="date" id="endDate" class="input-glass" aria-label="End date" />
+          <button class="btn btn-primary" id="applyCustom">Apply</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Charts -->
+    <section class="charts-grid">
+      <div class="glass-card chart-card">
+        <h2>Gold Price Trend</h2>
+        <div class="chart-wrapper">
+          <canvas id="goldChart"></canvas>
+        </div>
+      </div>
+      <div class="glass-card chart-card">
+        <h2>Silver Price Trend</h2>
+        <div class="chart-wrapper">
+          <canvas id="silverChart"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <!-- Data Table -->
+    <section class="glass-card table-section">
+      <h2>Price History</h2>
+      <div class="table-scroll">
+        <table id="priceTable">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Slot</th>
+              <th>Gold 22K</th>
+              <th>Gold 24K</th>
+              <th>Silver</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <p class="empty-state" id="emptyState">No price data available for this range.</p>
+    </section>
+  </main>
+
+  <!-- Toast -->
+  <div class="toast" id="toast"></div>
+
+  <script src="js/app.js"></script>
+</body>
+</html>
