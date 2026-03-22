@@ -1,6 +1,6 @@
 # Gold & Silver Price Dashboard
 
-A real-time dashboard that scrapes gold (22K, 24K) and silver prices from [LiveChennai](https://www.livechennai.com/gold_silverrate.asp), stores them in SQLite, and displays interactive charts and tables with a glassmorphism UI.
+A real-time dashboard that tracks gold (22K, 24K) and silver prices, stores them in SQLite, and displays interactive charts and tables with a glassmorphism UI.
 
 ---
 
@@ -67,7 +67,7 @@ GD/
 ### Prerequisites
 
 - **Python 3.10+** installed (tested with 3.12.10)
-- Internet connection (to scrape livechennai.com and load CDN assets)
+- Internet connection (to fetch live price data and load CDN assets)
 
 ### Installation
 
@@ -130,7 +130,7 @@ The `UNIQUE(date, time_slot)` constraint prevents duplicate entries. `INSERT OR 
 
 ## Scraping Strategy
 
-The LiveChennai page contains four HTML tables:
+The data source page contains four HTML tables:
 
 | Table | Content | Columns |
 |-------|---------|---------|
@@ -144,7 +144,7 @@ The scraper uses a **three-tier parsing strategy**:
 2. **Element-level fallback** — scans spans/divs when tables are restructured
 3. **Regex fallback** — extracts prices from raw page text
 
-Date format on the site (`DD/Mon/YYYY`, e.g., `22/Mar/2026`) is converted to ISO `YYYY-MM-DD` for consistent storage.
+Date format on the source (`DD/Mon/YYYY`, e.g., `22/Mar/2026`) is converted to ISO `YYYY-MM-DD` for consistent storage.
 
 ---
 
@@ -199,4 +199,4 @@ The scheduler runs in a background thread via APScheduler's `BackgroundScheduler
 
 ## License
 
-This project is for personal/educational use. Price data is sourced from [LiveChennai](https://www.livechennai.com/) and is subject to their terms of use.
+This project is for personal/educational use.
