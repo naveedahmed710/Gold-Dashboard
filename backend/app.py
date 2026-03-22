@@ -19,7 +19,7 @@ FRONTEND_DIR = os.path.normpath(
     os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "frontend")
 )
 
-app = Flask(__name__, static_folder=FRONTEND_DIR)
+app = Flask(__name__, static_folder=None)
 
 CORS(app, resources={r"/api/*": {"origins": ["http://localhost:5000", "http://127.0.0.1:5000"]}})
 
@@ -95,10 +95,16 @@ def serve_index():
     return send_from_directory(FRONTEND_DIR, "index.html")
 
 
-@app.route("/<path:path>")
-def serve_static(path):
-    _safe_path(path)
-    return send_from_directory(FRONTEND_DIR, path)
+@app.route("/css/<path:filename>")
+def serve_css(filename):
+    _safe_path(os.path.join("css", filename))
+    return send_from_directory(os.path.join(FRONTEND_DIR, "css"), filename)
+
+
+@app.route("/js/<path:filename>")
+def serve_js(filename):
+    _safe_path(os.path.join("js", filename))
+    return send_from_directory(os.path.join(FRONTEND_DIR, "js"), filename)
 
 
 @app.route("/api/latest")
@@ -116,7 +122,10 @@ def api_prices():
     end = request.args.get("end")
     today = datetime.now(IST).date()
 
-    if range_type == "week":
+    if range_type == "today":
+        start_date = today.isoformat()
+        end_date = today.isoformat()
+    elif range_type == "week":
         start_date = (today - timedelta(days=7)).isoformat()
         end_date = today.isoformat()
     elif range_type == "month":
@@ -139,6 +148,26 @@ def api_prices():
 
     data = query_prices(start_date, end_date)
     return jsonify(data)
+
+
+@app.route("/api/stats")
+@rate_limit
+def api_stats():
+    total = count_rows()
+    now = datetime.now(IST)
+    hour = now.hour
+    if hour < 10:
+        next_slot = now.replace(hour=10, minute=0, second=0, microsecond=0)
+    elif hour < 13:
+        next_slot = now.replace(hour=13, minute=0, second=0, microsecond=0)
+    elif hour < 17:
+        next_slot = now.replace(hour=17, minute=0, second=0, microsecond=0)
+    else:
+        next_slot = (now + timedelta(days=1)).replace(hour=10, minute=0, second=0, microsecond=0)
+    return jsonify({
+        "total_records": total,
+        "next_update": next_slot.strftime("%I:%M %p IST"),
+    })
 
 
 @app.route("/api/scrape-now", methods=["POST"])

@@ -1,13 +1,17 @@
 /* ================================================================
-   Gold & Silver Dashboard — Client
+   Gold & Silver Dashboard — Client v1.1
    ================================================================ */
 
 const API = window.location.origin;
 let goldChart = null;
 let silverChart = null;
 let currentRange = "week";
+let goldChartType = "line";
+let silverChartType = "line";
+let lastPricesData = [];
+let previousValues = { gold22k: null, gold24k: null, silver: null };
 
-/* ---------- Security: HTML escaping ---------- */
+/* ---------- Security ---------- */
 function esc(str) {
   const el = document.createElement("span");
   el.textContent = String(str);
@@ -25,20 +29,20 @@ themeToggle.addEventListener("click", () => {
   root.setAttribute("data-theme", next);
   localStorage.setItem("gs-theme", next);
   updateChartTheme();
+  renderSparklines(lastPricesData);
 });
 
 /* ---------- Toast ---------- */
 const toastEl = document.getElementById("toast");
 let toastTimer = null;
-
-function showToast(msg, durationMs = 3000) {
+function showToast(msg, ms = 3000) {
   toastEl.textContent = msg;
   toastEl.classList.add("visible");
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => toastEl.classList.remove("visible"), durationMs);
+  toastTimer = setTimeout(() => toastEl.classList.remove("visible"), ms);
 }
 
-/* ---------- Filter Buttons ---------- */
+/* ---------- Filters (with Today button) ---------- */
 const customRangeEl = document.getElementById("customRange");
 
 document.querySelectorAll(".btn-group .btn").forEach((btn) => {
@@ -46,7 +50,6 @@ document.querySelectorAll(".btn-group .btn").forEach((btn) => {
     document.querySelectorAll(".btn-group .btn").forEach((b) => b.classList.remove("active"));
     btn.classList.add("active");
     currentRange = btn.dataset.range;
-
     if (currentRange === "custom") {
       customRangeEl.classList.add("visible");
     } else {
@@ -59,18 +62,27 @@ document.querySelectorAll(".btn-group .btn").forEach((btn) => {
 document.getElementById("applyCustom").addEventListener("click", () => {
   const s = document.getElementById("startDate").value;
   const e = document.getElementById("endDate").value;
-  if (!s || !e) {
-    showToast("Please select both start and end dates");
-    return;
-  }
-  if (s > e) {
-    showToast("Start date must be before end date");
-    return;
-  }
+  if (!s || !e) { showToast("Please select both start and end dates"); return; }
+  if (s > e) { showToast("Start date must be before end date"); return; }
   fetchPrices();
 });
 
-/* ---------- Refresh Button ---------- */
+/* ---------- Chart Type Toggles ---------- */
+document.querySelectorAll(".chart-type-toggle").forEach((group) => {
+  group.querySelectorAll(".chart-toggle-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      group.querySelectorAll(".chart-toggle-btn").forEach((b) => b.classList.remove("active"));
+      btn.classList.add("active");
+      const target = group.dataset.target;
+      const type = btn.dataset.type;
+      if (target === "gold") goldChartType = type;
+      else silverChartType = type;
+      if (lastPricesData.length) renderCharts(lastPricesData);
+    });
+  });
+});
+
+/* ---------- Refresh ---------- */
 const refreshBtn = document.getElementById("refresh-btn");
 refreshBtn.addEventListener("click", async () => {
   refreshBtn.classList.add("spinning");
@@ -78,27 +90,48 @@ refreshBtn.addEventListener("click", async () => {
     const res = await fetch(`${API}/api/scrape-now`, { method: "POST" });
     if (res.ok) {
       showToast("Prices refreshed successfully");
-      await Promise.all([fetchLatest(), fetchPrices()]);
+      await Promise.all([fetchLatest(), fetchPrices(), fetchStats()]);
     } else {
-      showToast("Refresh failed — try again");
+      showToast("Refresh failed \u2014 try again");
     }
-  } catch (err) {
-    showToast("Network error — check if server is running");
+  } catch (_) {
+    showToast("Network error \u2014 check if server is running");
   } finally {
     refreshBtn.classList.remove("spinning");
   }
 });
 
-/* ---------- Fetch Latest Prices ---------- */
+/* ---------- Animated Counter ---------- */
+function countUp(el, from, to, duration) {
+  const start = performance.now();
+  const diff = to - from;
+  if (Math.abs(diff) < 0.01) { el.textContent = "\u20B9" + to.toLocaleString("en-IN"); return; }
+
+  function tick(now) {
+    const elapsed = now - start;
+    const progress = Math.min(elapsed / duration, 1);
+    const ease = 1 - Math.pow(1 - progress, 3);
+    const current = from + diff * ease;
+    el.textContent = "\u20B9" + Number(current.toFixed(2)).toLocaleString("en-IN");
+    if (progress < 1) requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+}
+
+/* ---------- Fetch Latest ---------- */
 async function fetchLatest() {
   try {
     const res = await fetch(`${API}/api/latest`);
     const d = await res.json();
     if (d.error) return;
 
-    animateValue("gold22k", d.gold_22k);
-    animateValue("gold24k", d.gold_24k);
-    animateValue("silver", d.silver);
+    removeSkeleton("card-gold22k");
+    removeSkeleton("card-gold24k");
+    removeSkeleton("card-silver");
+
+    updateCard("gold22k", d.gold_22k);
+    updateCard("gold24k", d.gold_24k);
+    updateCard("silver", d.silver);
 
     document.getElementById("lastUpdated").textContent =
       `Last updated: ${formatDate(d.date)} \u2022 ${capitalize(d.time_slot)}`;
@@ -107,29 +140,107 @@ async function fetchLatest() {
   }
 }
 
-function animateValue(elId, value) {
-  const el = document.getElementById(elId);
-  if (value == null) {
-    el.textContent = "--";
+function updateCard(key, value) {
+  const el = document.getElementById(key);
+  if (value == null) { el.textContent = "--"; return; }
+  const prev = previousValues[key];
+  if (prev != null && prev !== value) {
+    countUp(el, prev, value, 600);
+  } else {
+    el.textContent = "\u20B9" + Number(value).toLocaleString("en-IN");
+  }
+  previousValues[key] = value;
+}
+
+function removeSkeleton(cardId) {
+  const card = document.getElementById(cardId);
+  if (card) card.classList.remove("skeleton-card");
+}
+
+/* ---------- Price Deltas ---------- */
+function updateDeltas(data) {
+  if (data.length < 2) {
+    ["delta-gold22k", "delta-gold24k", "delta-silver"].forEach((id) => {
+      document.getElementById(id).className = "card-delta";
+      document.getElementById(id).textContent = "";
+    });
     return;
   }
-  const formatted = "\u20B9" + Number(value).toLocaleString("en-IN");
-  el.textContent = formatted;
-  el.style.transform = "scale(1.08)";
-  el.style.transition = "transform 0.3s ease";
-  setTimeout(() => (el.style.transform = "scale(1)"), 300);
+  const latest = data[data.length - 1];
+  const prev = data[data.length - 2];
+
+  setDelta("delta-gold22k", latest.gold_22k, prev.gold_22k);
+  setDelta("delta-gold24k", latest.gold_24k, prev.gold_24k);
+  setDelta("delta-silver", latest.silver, prev.silver);
 }
 
-function formatDate(dateStr) {
-  const d = new Date(dateStr + "T00:00:00");
-  return d.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+function setDelta(elId, current, previous) {
+  const el = document.getElementById(elId);
+  if (current == null || previous == null || previous === 0) {
+    el.className = "card-delta";
+    el.textContent = "";
+    return;
+  }
+  const diff = current - previous;
+  const pct = ((diff / previous) * 100).toFixed(1);
+  const arrow = diff > 0 ? "\u25B2" : diff < 0 ? "\u25BC" : "\u25CF";
+  const cls = diff > 0 ? "up" : diff < 0 ? "down" : "flat";
+  const sign = diff > 0 ? "+" : "";
+  el.className = `card-delta ${cls}`;
+  el.textContent = `${arrow} ${sign}${Number(diff.toFixed(2)).toLocaleString("en-IN")} (${sign}${pct}%)`;
 }
 
-function capitalize(s) {
-  return s ? s.charAt(0).toUpperCase() + s.slice(1) : "";
+/* ---------- Sparklines ---------- */
+function renderSparklines(data) {
+  if (!data.length) return;
+  const slice = data.slice(-7);
+  drawSparkline("spark-gold22k", slice.map((d) => d.gold_22k), "--chart-gold");
+  drawSparkline("spark-gold24k", slice.map((d) => d.gold_24k), "--chart-gold24");
+  drawSparkline("spark-silver", slice.map((d) => d.silver), "--chart-silver");
 }
 
-/* ---------- Fetch Historical Prices ---------- */
+function drawSparkline(canvasId, values, colorVar) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  const ctx = canvas.getContext("2d");
+  const w = canvas.width;
+  const h = canvas.height;
+  const color = getComputedStyle(root).getPropertyValue(colorVar).trim();
+
+  const nums = values.filter((v) => v != null);
+  if (nums.length < 2) return;
+
+  const min = Math.min(...nums);
+  const max = Math.max(...nums);
+  const range = max - min || 1;
+  const step = w / (nums.length - 1);
+
+  ctx.clearRect(0, 0, w, h);
+  ctx.beginPath();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 1.8;
+  ctx.lineJoin = "round";
+  ctx.lineCap = "round";
+
+  nums.forEach((v, i) => {
+    const x = i * step;
+    const y = h - 3 - ((v - min) / range) * (h - 6);
+    if (i === 0) ctx.moveTo(x, y);
+    else ctx.lineTo(x, y);
+  });
+  ctx.stroke();
+
+  const grad = ctx.createLinearGradient(0, 0, 0, h);
+  grad.addColorStop(0, color.replace(")", ", 0.15)").replace("rgb", "rgba"));
+  grad.addColorStop(1, "transparent");
+  ctx.lineTo((nums.length - 1) * step, h);
+  ctx.lineTo(0, h);
+  ctx.closePath();
+  ctx.fillStyle = grad;
+  ctx.fill();
+}
+
+/* ---------- Fetch Prices ---------- */
 async function fetchPrices() {
   let url = `${API}/api/prices?range=${currentRange}`;
   if (currentRange === "custom") {
@@ -138,12 +249,14 @@ async function fetchPrices() {
     if (!s || !e) return;
     url += `&start=${s}&end=${e}`;
   }
-
   try {
     const res = await fetch(url);
     const data = await res.json();
+    lastPricesData = data;
     renderCharts(data);
     renderTable(data);
+    updateDeltas(data);
+    renderSparklines(data);
   } catch (e) {
     console.error("Failed to fetch prices:", e);
     showToast("Failed to load price history");
@@ -155,65 +268,47 @@ function getColors() {
   const s = getComputedStyle(root);
   const g = (v) => s.getPropertyValue(v).trim();
   return {
-    gold:        g("--chart-gold"),
-    goldFill:    g("--chart-gold-fill"),
-    gold24:      g("--chart-gold24"),
-    gold24Fill:  g("--chart-gold24-fill"),
-    silver:      g("--chart-silver"),
-    silverFill:  g("--chart-silver-fill"),
-    grid:        g("--chart-grid"),
-    text:        g("--text-muted"),
+    gold: g("--chart-gold"), goldFill: g("--chart-gold-fill"),
+    gold24: g("--chart-gold24"), gold24Fill: g("--chart-gold24-fill"),
+    silver: g("--chart-silver"), silverFill: g("--chart-silver-fill"),
+    grid: g("--chart-grid"), text: g("--text-muted"),
   };
 }
 
 function baseOptions(c) {
   return {
-    responsive: true,
-    maintainAspectRatio: true,
+    responsive: true, maintainAspectRatio: true,
     interaction: { intersect: false, mode: "index" },
     plugins: {
       legend: { display: false },
       tooltip: {
-        backgroundColor: "rgba(0,0,0,0.75)",
-        titleColor: "#fff",
-        bodyColor: "#ddd",
-        cornerRadius: 10,
-        padding: 10,
-        displayColors: true,
-        callbacks: {
-          label: (ctx) => ` ${ctx.dataset.label}: \u20B9${Number(ctx.raw).toLocaleString("en-IN")}`,
-        },
+        backgroundColor: "rgba(0,0,0,0.75)", titleColor: "#fff", bodyColor: "#ddd",
+        cornerRadius: 10, padding: 10, displayColors: true,
+        callbacks: { label: (ctx) => ` ${ctx.dataset.label}: \u20B9${Number(ctx.raw).toLocaleString("en-IN")}` },
       },
     },
     scales: {
-      x: {
-        ticks: { color: c.text, maxRotation: 50, font: { size: 11 } },
-        grid: { color: c.grid, drawBorder: false },
-      },
-      y: {
-        ticks: {
-          color: c.text,
-          font: { size: 11 },
-          callback: (v) => "\u20B9" + Number(v).toLocaleString("en-IN"),
-        },
-        grid: { color: c.grid, drawBorder: false },
-      },
+      x: { ticks: { color: c.text, maxRotation: 50, font: { size: 11 } }, grid: { color: c.grid, drawBorder: false } },
+      y: { ticks: { color: c.text, font: { size: 11 }, callback: (v) => "\u20B9" + Number(v).toLocaleString("en-IN") }, grid: { color: c.grid, drawBorder: false } },
     },
   };
 }
 
-function datasetStyle(borderColor, fillColor, dashed) {
+function datasetStyle(borderColor, fillColor, dashed, chartType) {
+  const isBar = chartType === "bar";
   return {
     borderColor,
-    backgroundColor: fillColor,
-    fill: true,
-    tension: 0.4,
-    pointRadius: 4,
-    pointHoverRadius: 6,
+    backgroundColor: isBar ? borderColor + "44" : fillColor,
+    fill: !isBar,
+    tension: isBar ? 0 : 0.4,
+    pointRadius: isBar ? 0 : 4,
+    pointHoverRadius: isBar ? 0 : 6,
     pointBackgroundColor: borderColor,
     pointBorderColor: "transparent",
-    borderWidth: 2.5,
-    borderDash: dashed ? [6, 4] : [],
+    borderWidth: isBar ? 0 : 2.5,
+    borderDash: dashed && !isBar ? [6, 4] : [],
+    borderRadius: isBar ? 6 : 0,
+    barPercentage: 0.7,
   };
 }
 
@@ -225,48 +320,29 @@ function renderCharts(data) {
   if (goldChart) goldChart.destroy();
   if (silverChart) silverChart.destroy();
 
-  const goldCtx = document.getElementById("goldChart").getContext("2d");
-  goldChart = new Chart(goldCtx, {
-    type: "line",
+  goldChart = new Chart(document.getElementById("goldChart").getContext("2d"), {
+    type: goldChartType,
     data: {
       labels,
       datasets: [
-        {
-          label: "22K Gold",
-          data: data.map((d) => d.gold_22k),
-          ...datasetStyle(c.gold, c.goldFill, false),
-        },
-        {
-          label: "24K Gold",
-          data: data.map((d) => d.gold_24k),
-          ...datasetStyle(c.gold24, c.gold24Fill, true),
-        },
+        { label: "22K Gold", data: data.map((d) => d.gold_22k), ...datasetStyle(c.gold, c.goldFill, false, goldChartType) },
+        { label: "24K Gold", data: data.map((d) => d.gold_24k), ...datasetStyle(c.gold24, c.gold24Fill, true, goldChartType) },
       ],
     },
     options: {
       ...baseOptions(c),
       plugins: {
         ...baseOptions(c).plugins,
-        legend: {
-          display: true,
-          labels: { color: c.text, usePointStyle: true, pointStyle: "circle", padding: 16 },
-        },
+        legend: { display: true, labels: { color: c.text, usePointStyle: true, pointStyle: "circle", padding: 16 } },
       },
     },
   });
 
-  const silverCtx = document.getElementById("silverChart").getContext("2d");
-  silverChart = new Chart(silverCtx, {
-    type: "line",
+  silverChart = new Chart(document.getElementById("silverChart").getContext("2d"), {
+    type: silverChartType,
     data: {
       labels,
-      datasets: [
-        {
-          label: "Silver",
-          data: data.map((d) => d.silver),
-          ...datasetStyle(c.silver, c.silverFill, false),
-        },
-      ],
+      datasets: [{ label: "Silver", data: data.map((d) => d.silver), ...datasetStyle(c.silver, c.silverFill, false, silverChartType) }],
     },
     options: baseOptions(c),
   });
@@ -279,10 +355,9 @@ function shortLabel(date, slot) {
   return `${day} ${slotMap[slot] || slot}`;
 }
 
-/* ---------- Update Chart Theme ---------- */
+/* ---------- Theme Update ---------- */
 function updateChartTheme() {
   const c = getColors();
-
   [goldChart, silverChart].forEach((chart) => {
     if (!chart) return;
     chart.options.scales.x.ticks.color = c.text;
@@ -290,31 +365,27 @@ function updateChartTheme() {
     chart.options.scales.x.grid.color = c.grid;
     chart.options.scales.y.grid.color = c.grid;
   });
-
   if (goldChart) {
     goldChart.data.datasets[0].borderColor = c.gold;
-    goldChart.data.datasets[0].backgroundColor = c.goldFill;
+    goldChart.data.datasets[0].backgroundColor = goldChartType === "bar" ? c.gold + "44" : c.goldFill;
     goldChart.data.datasets[0].pointBackgroundColor = c.gold;
     if (goldChart.data.datasets[1]) {
       goldChart.data.datasets[1].borderColor = c.gold24;
-      goldChart.data.datasets[1].backgroundColor = c.gold24Fill;
+      goldChart.data.datasets[1].backgroundColor = goldChartType === "bar" ? c.gold24 + "44" : c.gold24Fill;
       goldChart.data.datasets[1].pointBackgroundColor = c.gold24;
     }
-    if (goldChart.options.plugins.legend) {
-      goldChart.options.plugins.legend.labels.color = c.text;
-    }
+    if (goldChart.options.plugins.legend) goldChart.options.plugins.legend.labels.color = c.text;
     goldChart.update("none");
   }
-
   if (silverChart) {
     silverChart.data.datasets[0].borderColor = c.silver;
-    silverChart.data.datasets[0].backgroundColor = c.silverFill;
+    silverChart.data.datasets[0].backgroundColor = silverChartType === "bar" ? c.silver + "44" : c.silverFill;
     silverChart.data.datasets[0].pointBackgroundColor = c.silver;
     silverChart.update("none");
   }
 }
 
-/* ---------- Render Table ---------- */
+/* ---------- Table with Row Highlights ---------- */
 function renderTable(data) {
   const tbody = document.querySelector("#priceTable tbody");
   const emptyState = document.getElementById("emptyState");
@@ -324,27 +395,52 @@ function renderTable(data) {
     emptyState.classList.add("visible");
     return;
   }
-
   emptyState.classList.remove("visible");
   const slotMap = { morning: "10:00 AM", afternoon: "1:00 PM", evening: "5:00 PM" };
+  const THRESHOLD = 0.015;
 
-  tbody.innerHTML = data
-    .slice()
-    .reverse()
-    .map(
-      (d) => `<tr>
-        <td>${esc(formatDate(d.date))}</td>
-        <td>${esc(slotMap[d.time_slot] || d.time_slot)}</td>
-        <td>${d.gold_22k != null ? "\u20B9" + esc(Number(d.gold_22k).toLocaleString("en-IN")) : "--"}</td>
-        <td>${d.gold_24k != null ? "\u20B9" + esc(Number(d.gold_24k).toLocaleString("en-IN")) : "--"}</td>
-        <td>${d.silver != null ? "\u20B9" + esc(Number(d.silver).toLocaleString("en-IN")) : "--"}</td>
-      </tr>`
-    )
-    .join("");
+  const reversed = data.slice().reverse();
+  tbody.innerHTML = reversed.map((d, i) => {
+    let rowClass = "";
+    const prev = reversed[i + 1];
+    if (prev && d.gold_22k != null && prev.gold_22k != null && prev.gold_22k !== 0) {
+      const pctChange = (d.gold_22k - prev.gold_22k) / prev.gold_22k;
+      if (pctChange > THRESHOLD) rowClass = "row-up";
+      else if (pctChange < -THRESHOLD) rowClass = "row-down";
+    }
+    return `<tr class="${rowClass}">
+      <td>${esc(formatDate(d.date))}</td>
+      <td>${esc(slotMap[d.time_slot] || d.time_slot)}</td>
+      <td>${d.gold_22k != null ? "\u20B9" + esc(Number(d.gold_22k).toLocaleString("en-IN")) : "--"}</td>
+      <td>${d.gold_24k != null ? "\u20B9" + esc(Number(d.gold_24k).toLocaleString("en-IN")) : "--"}</td>
+      <td>${d.silver != null ? "\u20B9" + esc(Number(d.silver).toLocaleString("en-IN")) : "--"}</td>
+    </tr>`;
+  }).join("");
+}
+
+/* ---------- Footer Stats ---------- */
+async function fetchStats() {
+  try {
+    const res = await fetch(`${API}/api/stats`);
+    const d = await res.json();
+    document.getElementById("footer-next").textContent = `Next update: ${d.next_update}`;
+    document.getElementById("footer-records").textContent = `${d.total_records} records`;
+  } catch (_) {}
+}
+
+/* ---------- Helpers ---------- */
+function formatDate(dateStr) {
+  const d = new Date(dateStr + "T00:00:00");
+  return d.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+}
+
+function capitalize(s) {
+  return s ? s.charAt(0).toUpperCase() + s.slice(1) : "";
 }
 
 /* ---------- Init ---------- */
 fetchLatest();
 fetchPrices();
+fetchStats();
 
-setInterval(fetchLatest, 5 * 60 * 1000);
+setInterval(() => { fetchLatest(); fetchStats(); }, 5 * 60 * 1000);

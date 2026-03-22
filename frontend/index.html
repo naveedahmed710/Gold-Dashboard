@@ -12,14 +12,12 @@
   <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3" integrity="sha384-cVMg8E3QFwTvGCDuK+ET4PD341jF3W8nO1auiXfuZNQkzbUUiBGLsIQUE+b1mxws" crossorigin="anonymous"></script>
 </head>
 <body>
-  <!-- Animated gradient blobs -->
   <div class="backdrop-blur">
     <div class="blob blob-gold"></div>
     <div class="blob blob-silver"></div>
     <div class="blob blob-accent"></div>
   </div>
 
-  <!-- Header -->
   <header class="glass-header">
     <div class="header-content">
       <div class="brand">
@@ -41,14 +39,10 @@
         <button id="theme-toggle" class="btn-icon" title="Toggle theme">
           <svg class="icon-sun" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="12" cy="12" r="5"></circle>
-            <line x1="12" y1="1" x2="12" y2="3"></line>
-            <line x1="12" y1="21" x2="12" y2="23"></line>
-            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
-            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
-            <line x1="1" y1="12" x2="3" y2="12"></line>
-            <line x1="21" y1="12" x2="23" y2="12"></line>
-            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
-            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+            <line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+            <line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
           </svg>
           <svg class="icon-moon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
@@ -61,37 +55,42 @@
   <main class="container">
     <!-- Price Cards -->
     <section class="price-cards">
-      <div class="glass-card price-card gold-card">
+      <div class="glass-card price-card gold-card skeleton-card" id="card-gold22k">
         <div class="card-icon">
           <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
             <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
           </svg>
         </div>
         <span class="card-label">Gold 22K</span>
-        <span class="card-price" id="gold22k">--</span>
+        <span class="card-price" id="gold22k"><span class="skel-bar skel-price"></span></span>
+        <span class="card-delta" id="delta-gold22k"></span>
+        <canvas class="sparkline" id="spark-gold22k" width="120" height="32"></canvas>
         <span class="card-unit">per gram</span>
         <div class="card-shimmer"></div>
       </div>
-      <div class="glass-card price-card gold24-card">
+      <div class="glass-card price-card gold24-card skeleton-card" id="card-gold24k">
         <div class="card-icon">
           <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
             <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
           </svg>
         </div>
         <span class="card-label">Gold 24K</span>
-        <span class="card-price" id="gold24k">--</span>
+        <span class="card-price" id="gold24k"><span class="skel-bar skel-price"></span></span>
+        <span class="card-delta" id="delta-gold24k"></span>
+        <canvas class="sparkline" id="spark-gold24k" width="120" height="32"></canvas>
         <span class="card-unit">per gram</span>
         <div class="card-shimmer"></div>
       </div>
-      <div class="glass-card price-card silver-card">
+      <div class="glass-card price-card silver-card skeleton-card" id="card-silver">
         <div class="card-icon">
           <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-            <circle cx="12" cy="12" r="10"/>
-            <path d="M8 12h8M12 8v8"/>
+            <circle cx="12" cy="12" r="10"/><path d="M8 12h8M12 8v8"/>
           </svg>
         </div>
         <span class="card-label">Silver</span>
-        <span class="card-price" id="silver">--</span>
+        <span class="card-price" id="silver"><span class="skel-bar skel-price"></span></span>
+        <span class="card-delta" id="delta-silver"></span>
+        <canvas class="sparkline" id="spark-silver" width="120" height="32"></canvas>
         <span class="card-unit">per gram</span>
         <div class="card-shimmer"></div>
       </div>
@@ -103,6 +102,7 @@
     <section class="glass-card filter-section">
       <div class="filter-row">
         <div class="btn-group" role="group" aria-label="Date range">
+          <button class="btn" data-range="today">Today</button>
           <button class="btn active" data-range="week">Week</button>
           <button class="btn" data-range="month">Month</button>
           <button class="btn" data-range="custom">Custom</button>
@@ -119,13 +119,33 @@
     <!-- Charts -->
     <section class="charts-grid">
       <div class="glass-card chart-card">
-        <h2>Gold Price Trend</h2>
+        <div class="chart-header">
+          <h2>Gold Price Trend</h2>
+          <div class="chart-type-toggle" data-target="gold">
+            <button class="chart-toggle-btn active" data-type="line" title="Line chart">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 8 13 13 9 9 2 16"></polyline></svg>
+            </button>
+            <button class="chart-toggle-btn" data-type="bar" title="Bar chart">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="12" width="4" height="9"></rect><rect x="10" y="7" width="4" height="14"></rect><rect x="17" y="3" width="4" height="18"></rect></svg>
+            </button>
+          </div>
+        </div>
         <div class="chart-wrapper">
           <canvas id="goldChart"></canvas>
         </div>
       </div>
       <div class="glass-card chart-card">
-        <h2>Silver Price Trend</h2>
+        <div class="chart-header">
+          <h2>Silver Price Trend</h2>
+          <div class="chart-type-toggle" data-target="silver">
+            <button class="chart-toggle-btn active" data-type="line" title="Line chart">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 8 13 13 9 9 2 16"></polyline></svg>
+            </button>
+            <button class="chart-toggle-btn" data-type="bar" title="Bar chart">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="12" width="4" height="9"></rect><rect x="10" y="7" width="4" height="14"></rect><rect x="17" y="3" width="4" height="18"></rect></svg>
+            </button>
+          </div>
+        </div>
         <div class="chart-wrapper">
           <canvas id="silverChart"></canvas>
         </div>
@@ -153,7 +173,17 @@
     </section>
   </main>
 
-  <!-- Toast -->
+  <!-- Footer -->
+  <footer class="glass-footer">
+    <div class="footer-content">
+      <span id="footer-next">Next update: --</span>
+      <span class="footer-sep">&middot;</span>
+      <span id="footer-records">-- records</span>
+      <span class="footer-sep">&middot;</span>
+      <span>v1.1</span>
+    </div>
+  </footer>
+
   <div class="toast" id="toast"></div>
 
   <script src="js/app.js"></script>
