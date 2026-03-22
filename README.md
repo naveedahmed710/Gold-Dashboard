@@ -6,18 +6,33 @@ A real-time dashboard that tracks gold (22K, 24K) and silver prices, stores them
 
 ## Features
 
+### Core
+
 | Feature | Description |
 |---------|-------------|
 | **Live price cards** | Current Gold 22K, Gold 24K, and Silver prices per gram |
 | **Historical backfill** | Automatically imports ~10 days of historical data from the website on first run |
 | **Scheduled scraping** | APScheduler fetches prices daily at **10:00 AM**, **1:00 PM**, and **5:00 PM IST** |
-| **Interactive charts** | Chart.js line charts with 22K/24K gold overlay and separate silver chart |
-| **Date filters** | Week, Month, and Custom date range selectors |
+| **Interactive charts** | Chart.js charts with 22K/24K gold overlay and separate silver chart |
+| **Date filters** | Today, Week, Month, and Custom date range selectors |
 | **Dark / Light mode** | Toggle with `localStorage` persistence |
 | **Glassmorphism UI** | Frosted glass cards, animated gradient blobs, shimmer effects |
 | **Responsive design** | Adapts to desktop, tablet, and mobile (breakpoints at 900px, 768px, 480px) |
 | **Manual refresh** | One-click button to trigger an immediate scrape |
 | **Toast notifications** | User feedback for refresh, validation, and error states |
+
+### v1.1 Enhancements
+
+| Feature | Description |
+|---------|-------------|
+| **Price change indicators** | Day-over-day delta badges on each card with colored arrows and percentages (green for up, red for down) |
+| **Skeleton loading** | Pulsing placeholder bars on price cards while waiting for API data |
+| **Chart type toggle** | Switch between line and bar chart views via toggle buttons in each chart header |
+| **Sparkline mini-charts** | Tiny 7-point trend lines on each price card rendered on canvas with gradient fill |
+| **Animated counters** | Price values roll smoothly from old to new with eased counting animation on refresh |
+| **Footer** | Glass footer showing next scheduled update time, total record count, and version |
+| **Row highlights** | Table rows with >1.5% price movements get green/red left-border and tinted background |
+| **Today filter** | Dedicated button to view only today's morning/afternoon/evening price slots |
 
 ---
 
@@ -72,8 +87,9 @@ GD/
 ### Installation
 
 ```bash
-# Clone or navigate to the project directory
-cd GD
+# Clone the repository
+git clone https://github.com/naveedahmed710/Gold-Dashboard.git
+cd Gold-Dashboard
 
 # Install Python dependencies
 pip install -r backend/requirements.txt
@@ -102,9 +118,11 @@ On first startup the server will:
 |--------|----------|-------------|
 | `GET` | `/` | Serve the dashboard frontend |
 | `GET` | `/api/latest` | Get the most recent price record |
+| `GET` | `/api/prices?range=today` | Get today's price slots |
 | `GET` | `/api/prices?range=week` | Get prices for the last 7 days |
 | `GET` | `/api/prices?range=month` | Get prices for the last 30 days |
 | `GET` | `/api/prices?range=custom&start=YYYY-MM-DD&end=YYYY-MM-DD` | Custom date range (max 365 days) |
+| `GET` | `/api/stats` | Get total record count and next scheduled update time |
 | `POST` | `/api/scrape-now` | Trigger an immediate scrape and store |
 
 ---
@@ -164,6 +182,7 @@ Date format on the source (`DD/Mon/YYYY`, e.g., `22/Mar/2026`) is converted to I
 | **Bind to localhost** | Server binds to `127.0.0.1` (not `0.0.0.0`) to prevent external access |
 | **WAL mode** | SQLite uses Write-Ahead Logging for safe concurrent reads during writes |
 | **Connection timeout** | SQLite connections use a 10-second timeout to prevent deadlocks |
+| **Explicit static routes** | CSS and JS served via dedicated routes instead of catch-all, preventing API route shadowing |
 
 ### Frontend
 
@@ -185,6 +204,8 @@ Date format on the source (`DD/Mon/YYYY`, e.g., `22/Mar/2026`) is converted to I
 
 The scheduler runs in a background thread via APScheduler's `BackgroundScheduler`. Jobs persist across the server process lifetime. If the server is restarted, historical data is preserved in SQLite and only missing rows are backfilled.
 
+The footer displays the next scheduled update time dynamically via the `/api/stats` endpoint.
+
 ---
 
 ## Responsive Breakpoints
@@ -194,6 +215,32 @@ The scheduler runs in a background thread via APScheduler's `BackgroundScheduler
 | > 900px | 2-column chart grid, 3-column price cards |
 | 768px | 1-column charts, 2-column cards, stacked filters |
 | 480px | 1-column everything, compact header |
+
+---
+
+## Changelog
+
+### v1.1
+
+- Added price change indicators with day-over-day delta, colored arrows, and percentages
+- Added skeleton loading placeholders with pulse animation
+- Added line/bar chart type toggle on both gold and silver charts
+- Added sparkline mini-charts on each price card showing 7-day trend
+- Added animated number counting when prices update
+- Added glass footer with next update time, record count, and version
+- Added table row highlights for >1.5% price movements
+- Added Today filter button for same-day slots
+- Added `/api/stats` endpoint for footer data
+- Added `/api/prices?range=today` support
+- Fixed static file routing to use explicit `/css/` and `/js/` routes instead of catch-all
+
+### v1.0
+
+- Initial release with live scraping, SQLite storage, scheduled updates
+- Glassmorphism UI with dark/light mode
+- Chart.js line charts, date range filters, responsive layout
+- Historical data backfill on first run
+- Security hardening: CSP, rate limiting, SRI, input validation, path traversal protection
 
 ---
 
