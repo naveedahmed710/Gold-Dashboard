@@ -158,6 +158,15 @@ function removeSkeleton(cardId) {
 }
 
 /* ---------- Price Deltas ---------- */
+function findLastChanged(data, key) {
+  const latest = data[data.length - 1];
+  if (latest[key] == null) return null;
+  for (let i = data.length - 2; i >= 0; i--) {
+    if (data[i][key] != null && data[i][key] !== latest[key]) return data[i];
+  }
+  return null;
+}
+
 function updateDeltas(data) {
   if (data.length < 2) {
     ["delta-gold22k", "delta-gold24k", "delta-silver"].forEach((id) => {
@@ -167,11 +176,14 @@ function updateDeltas(data) {
     return;
   }
   const latest = data[data.length - 1];
-  const prev = data[data.length - 2];
 
-  setDelta("delta-gold22k", latest.gold_22k, prev.gold_22k);
-  setDelta("delta-gold24k", latest.gold_24k, prev.gold_24k);
-  setDelta("delta-silver", latest.silver, prev.silver);
+  const refGold22k = findLastChanged(data, "gold_22k");
+  const refGold24k = findLastChanged(data, "gold_24k");
+  const refSilver = findLastChanged(data, "silver");
+
+  setDelta("delta-gold22k", latest.gold_22k, refGold22k ? refGold22k.gold_22k : null);
+  setDelta("delta-gold24k", latest.gold_24k, refGold24k ? refGold24k.gold_24k : null);
+  setDelta("delta-silver", latest.silver, refSilver ? refSilver.silver : null);
 }
 
 function setDelta(elId, current, previous) {

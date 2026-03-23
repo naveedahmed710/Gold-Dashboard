@@ -21,7 +21,7 @@ FRONTEND_DIR = os.path.normpath(
 
 app = Flask(__name__, static_folder=None)
 
-CORS(app, resources={r"/api/*": {"origins": ["http://localhost:5000", "http://127.0.0.1:5000"]}})
+CORS(app, resources={r"/api/*": {"origins": ["http://localhost:4000", "http://127.0.0.1:4000"]}})
 
 IST = pytz.timezone("Asia/Kolkata")
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
@@ -44,6 +44,8 @@ def add_security_headers(response):
         "img-src 'self' data:; "
         "connect-src 'self'"
     )
+    response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
     return response
 
 
@@ -52,6 +54,7 @@ def add_security_headers(response):
 _rate_buckets = defaultdict(list)
 RATE_LIMIT = 30          # requests
 RATE_WINDOW = 60          # seconds
+_MAX_TRACKED_IPS = 1024
 
 
 def rate_limit(f):
@@ -64,6 +67,10 @@ def rate_limit(f):
         if len(_rate_buckets[ip]) >= RATE_LIMIT:
             return jsonify({"error": "Rate limit exceeded. Try again later."}), 429
         _rate_buckets[ip].append(now)
+        if len(_rate_buckets) > _MAX_TRACKED_IPS:
+            stale = [k for k, v in _rate_buckets.items() if not v]
+            for k in stale:
+                del _rate_buckets[k]
         return f(*args, **kwargs)
     return decorated
 
@@ -117,7 +124,11 @@ def api_latest():
 @app.route("/api/prices")
 @rate_limit
 def api_prices():
+    _VALID_RANGES = {"today", "week", "month", "custom"}
     range_type = request.args.get("range", "week")
+    if range_type not in _VALID_RANGES:
+        return jsonify({"error": f"Invalid range. Must be one of: {', '.join(sorted(_VALID_RANGES))}"}), 400
+
     start = request.args.get("start")
     end = request.args.get("end")
     today = datetime.now(IST).date()
@@ -131,7 +142,7 @@ def api_prices():
     elif range_type == "month":
         start_date = (today - timedelta(days=30)).isoformat()
         end_date = today.isoformat()
-    elif range_type == "custom":
+    else:
         start_date = _validate_date(start)
         end_date = _validate_date(end)
         if not start_date or not end_date:
@@ -142,9 +153,6 @@ def api_prices():
             return jsonify({"error": "Start date must be before end date."}), 400
         if (d_end - d_start).days > MAX_RANGE_DAYS:
             return jsonify({"error": f"Range cannot exceed {MAX_RANGE_DAYS} days."}), 400
-    else:
-        start_date = (today - timedelta(days=7)).isoformat()
-        end_date = today.isoformat()
 
     data = query_prices(start_date, end_date)
     return jsonify(data)
@@ -195,4 +203,4 @@ if __name__ == "__main__":
         print("No data in DB \u2014 running initial scrape...")
         fetch_and_store()
 
-    app.run(host="127.0.0.1", port=5000, debug=False)
+    app.run(host="127.0.0.1", port=4000, debug=False)

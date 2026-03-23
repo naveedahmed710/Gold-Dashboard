@@ -25,12 +25,12 @@ A real-time dashboard that tracks gold (22K, 24K) and silver prices, stores them
 
 | Feature | Description |
 |---------|-------------|
-| **Price change indicators** | Day-over-day delta badges on each card with colored arrows and percentages (green for up, red for down) |
+| **Price change indicators** | Delta badges on each card showing the difference from the last actual price change, with colored arrows and percentages (green for up, red for down). When rates are unchanged, the indicator reflects the difference from the most recent change instead of showing 0%. |
 | **Skeleton loading** | Pulsing placeholder bars on price cards while waiting for API data |
 | **Chart type toggle** | Switch between line and bar chart views via toggle buttons in each chart header |
 | **Sparkline mini-charts** | Tiny 7-point trend lines on each price card rendered on canvas with gradient fill |
 | **Animated counters** | Price values roll smoothly from old to new with eased counting animation on refresh |
-| **Footer** | Glass footer showing next scheduled update time, total record count, and version |
+| **Footer** | Glass footer showing next scheduled update time, total record count, version, and educational-purpose disclaimer |
 | **Row highlights** | Table rows with >1.5% price movements get green/red left-border and tinted background |
 | **Today filter** | Dedicated button to view only today's morning/afternoon/evening price slots |
 
@@ -102,7 +102,7 @@ cd backend
 python app.py
 ```
 
-Open your browser to **http://127.0.0.1:5000**
+Open your browser to **http://127.0.0.1:4000**
 
 On first startup the server will:
 1. Initialize the SQLite database
@@ -178,8 +178,12 @@ Date format on the source (`DD/Mon/YYYY`, e.g., `22/Mar/2026`) is converted to I
 | **Range capping** | Custom date ranges capped at 365 days to prevent resource exhaustion |
 | **Path traversal prevention** | Static file paths normalized and checked to stay within `frontend/` |
 | **Parameterized queries** | All SQLite queries use parameter binding — no string interpolation |
-| **CORS restriction** | API access restricted to `localhost:5000` / `127.0.0.1:5000` origins |
+| **CORS restriction** | API access restricted to `localhost:4000` / `127.0.0.1:4000` origins |
 | **Bind to localhost** | Server binds to `127.0.0.1` (not `0.0.0.0`) to prevent external access |
+| **HSTS** | `Strict-Transport-Security` header with 1-year max-age |
+| **Permissions-Policy** | Restricts browser features: camera, microphone, and geolocation disabled |
+| **Range parameter whitelist** | `/api/prices` rejects unknown `range` values with 400 instead of silently defaulting |
+| **Rate limiter eviction** | Stale IP entries are pruned when tracked IPs exceed 1024 to prevent memory exhaustion |
 | **WAL mode** | SQLite uses Write-Ahead Logging for safe concurrent reads during writes |
 | **Connection timeout** | SQLite connections use a 10-second timeout to prevent deadlocks |
 | **Explicit static routes** | CSS and JS served via dedicated routes instead of catch-all, preventing API route shadowing |
@@ -218,7 +222,22 @@ The footer displays the next scheduled update time dynamically via the `/api/sta
 
 ---
 
+## Disclaimer
+
+This project is intended solely for educational and learning purposes.
+
+---
+
 ## Changelog
+
+### v1.2
+
+- Changed price change indicators to show delta from the last actual price change instead of 0% when rates are unchanged
+- Added educational-purpose disclaimer to the footer
+- Changed server port from 5000 to 4000
+- Added `Strict-Transport-Security` and `Permissions-Policy` security headers
+- Added explicit whitelist validation for the `range` query parameter
+- Added rate limiter IP eviction to prevent unbounded memory growth
 
 ### v1.1
 
