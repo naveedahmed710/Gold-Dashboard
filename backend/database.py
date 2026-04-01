@@ -1,6 +1,7 @@
 import sqlite3
 import os
 from contextlib import contextmanager
+from datetime import datetime
 
 DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "data", "prices.db")
 
@@ -25,6 +26,13 @@ def init_db():
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_prices_date ON prices(date)"
         )
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS visitor_counts (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                year_month TEXT NOT NULL UNIQUE,
+                count INTEGER NOT NULL DEFAULT 0
+            )
+        """)
 
 
 @contextmanager
@@ -90,3 +98,30 @@ def count_rows():
     with get_db() as conn:
         row = conn.execute("SELECT COUNT(*) as cnt FROM prices").fetchone()
         return row["cnt"] if row else 0
+
+
+def increment_visitor():
+    """Increment visitor count for the current month and return updated total."""
+    ym = datetime.now().strftime("%Y-%m")
+    with get_db() as conn:
+        conn.execute(
+            """
+            INSERT INTO visitor_counts (year_month, count) VALUES (?, 1)
+            ON CONFLICT(year_month) DO UPDATE SET count = count + 1
+            """,
+            (ym,),
+        )
+        row = conn.execute(
+            "SELECT count FROM visitor_counts WHERE year_month = ?", (ym,)
+        ).fetchone()
+        return row["count"] if row else 0
+
+
+def get_monthly_visitors(year_month=None):
+    """Get visitor count for a given month (defaults to current month)."""
+    ym = year_month or datetime.now().strftime("%Y-%m")
+    with get_db() as conn:
+        row = conn.execute(
+            "SELECT count FROM visitor_counts WHERE year_month = ?", (ym,)
+        ).fetchone()
+        return row["count"] if row else 0

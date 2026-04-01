@@ -437,6 +437,14 @@ async function fetchStats() {
     const d = await res.json();
     document.getElementById("footer-next").textContent = `Next update: ${d.next_update}`;
     document.getElementById("footer-records").textContent = `${d.total_records} records`;
+    document.getElementById("footer-visitors").textContent =
+      `${Number(d.monthly_visitors).toLocaleString("en-IN")} visitors this month`;
+  } catch (_) {}
+}
+
+async function recordVisit() {
+  try {
+    await fetch(`${API}/api/visit`, { method: "POST" });
   } catch (_) {}
 }
 
@@ -451,6 +459,7 @@ function capitalize(s) {
 }
 
 /* ---------- Init ---------- */
+recordVisit();
 fetchLatest();
 fetchPrices();
 fetchStats();

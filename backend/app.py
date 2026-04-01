@@ -12,7 +12,7 @@ from flask_cors import CORS
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from database import init_db, query_prices, get_latest, count_rows
+from database import init_db, query_prices, get_latest, count_rows, increment_visitor, get_monthly_visitors
 from scheduler import start_scheduler, fetch_and_store, backfill_history
 
 FRONTEND_DIR = os.path.normpath(
@@ -175,7 +175,16 @@ def api_stats():
     return jsonify({
         "total_records": total,
         "next_update": next_slot.strftime("%I:%M %p IST"),
+        "monthly_visitors": get_monthly_visitors(),
     })
+
+
+@app.route("/api/visit", methods=["POST"])
+@rate_limit
+def api_visit():
+    """Record a page visit and return current month's visitor count."""
+    count = increment_visitor()
+    return jsonify({"monthly_visitors": count})
 
 
 @app.route("/api/scrape-now", methods=["POST"])
